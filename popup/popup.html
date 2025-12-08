@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AC Manager</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AC Manager</h1>
+    </header>
+    
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="calendars">Calendars</button>
+      <button class="tab-btn" data-tab="favorites">Favorites</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+    </nav>
+
+    <main>
+      <!-- Calendars Tab -->
+      <section id="calendars" class="tab-content active">
+        <div class="input-group">
+          <input type="text" id="calendar-url" placeholder="Adventar Calendar URL">
+          <button id="add-calendar-btn">Add</button>
+        </div>
+        <div id="calendars-list" class="list-container">
+          <!-- Calendar items will be injected here -->
+        </div>
+      </section>
+
+      <!-- Favorites Tab -->
+      <section id="favorites" class="tab-content">
+        <div id="favorites-list" class="list-container">
+          <!-- Favorite items will be injected here -->
+        </div>
+      </section>
+
+      <!-- Settings Tab -->
+      <section id="settings" class="tab-content">
+        <div class="setting-item">
+          <label for="refresh-interval">Auto-refresh Interval (minutes)</label>
+          <input type="number" id="refresh-interval" min="15" value="60">
+        </div>
+        <button id="save-settings-btn" class="primary-btn">Save Settings</button>
+        <button id="force-update-btn" class="secondary-btn">Force Update All</button>
+      </section>
+    </main>
+
+    <!-- Calendar Details Modal/View (simplified as a hidden overlay or expanded view) -->
+    <div id="calendar-details" class="hidden">
+      <div class="details-header">
+        <button id="back-btn"><i class="fas fa-arrow-left"></i> Back</button>
+        <h2 id="details-title">Calendar Title</h2>
+      </div>
+      <div id="articles-list" class="list-container">
+        <!-- Articles -->
+      </div>
+    </div>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

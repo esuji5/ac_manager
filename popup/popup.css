@@ -1,0 +1,216 @@
+:root {
+  --primary-color: #00c4cc; /* Adventar-ish cyan */
+  --qiita-color: #55c500;   /* Qiita green */
+  --bg-color: #f6f8fa;
+  --text-color: #333;
+  --border-color: #ddd;
+}
+
+body {
+  width: 350px;
+  height: 600px;
+  margin: 0;
+  padding: 0;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+header {
+  padding: 10px;
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.tabs {
+  display: flex;
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-weight: bold;
+  opacity: 0.6;
+}
+
+.tab-btn.active {
+  opacity: 1;
+  border-bottom: 2px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.tab-content {
+  display: none;
+  padding: 15px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Important for nested flex scroll */
+}
+
+/* Custom Scrollbar - Always visible */
+::-webkit-scrollbar {
+  width: 10px;
+  background-color: #f1f1f1;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+::-webkit-scrollbar-thumb {
+  background: #bbb; 
+  border-radius: 5px;
+  border: 2px solid #f1f1f1; /* Padding effect */
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #999; 
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.input-group {
+  display: flex;
+  margin-bottom: 15px;
+}
+
+#calendar-url {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px 0 0 4px;
+}
+
+#add-calendar-btn {
+  padding: 8px 15px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+}
+
+.list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.calendar-card, .article-card {
+  background: white;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+
+.calendar-card h3, .article-card h4 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+}
+
+.meta {
+  font-size: 11px;
+  color: #777;
+  display: flex;
+  justify-content: space-between;
+}
+
+.badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: white;
+}
+
+.badge.adventar { background-color: #00c4cc; }
+
+.new-badge {
+  display: inline-block;
+  background-color: #dc3545;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.hidden { display: none !important; }
+
+#calendar-details {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-color);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.details-header {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+}
+
+#back-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.article-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding: 8px 0;
+}
+
+.article-info {
+  flex: 1;
+}
+
+.fav-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 16px;
+}
+
+.fav-btn.active {
+  color: gold;
+}
+
+#articles-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Important for flex scroll */
+  padding: 10px;
+}
