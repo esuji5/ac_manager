@@ -1,203 +1,381 @@
 import { storage } from '../utils/storage.js';
+import { sanitize } from '../utils/sanitize.js';
+import { icons } from '../utils/icons.js';
 
+// =============================================================================
+// Constants
+// =============================================================================
+
+const MESSAGES = {
+    ADD_CALENDAR: 'ADD_CALENDAR',
+    FORCE_UPDATE: 'FORCE_UPDATE',
+    UPDATE_SETTINGS: 'UPDATE_SETTINGS',
+    CLEAR_NEW_COUNTS: 'CLEAR_NEW_COUNTS'
+};
+
+const UI_TEXT = {
+    ADD_BUTTON: 'Add',
+    ADDING: 'Adding...',
+    UPDATING: 'Updating...',
+    FORCE_UPDATE: 'Force Update All',
+    NO_FAVORITES: 'No favorites yet.',
+    ADD_ERROR: 'Failed to add calendar. Check URL.',
+    SETTINGS_SAVED: 'Settings Saved',
+    CONFIRM_REMOVE: (title) => `Remove calendar "${title}"?`
+};
+
+// =============================================================================
 // DOM Elements
-const tabs = document.querySelectorAll('.tab-btn');
-const tabContents = document.querySelectorAll('.tab-content');
-const calendarsList = document.getElementById('calendars-list');
-const favoritesList = document.getElementById('favorites-list');
-const addCalendarBtn = document.getElementById('add-calendar-btn');
-const calendarUrlInput = document.getElementById('calendar-url');
-const calendarDetails = document.getElementById('calendar-details');
-const backBtn = document.getElementById('back-btn');
-const detailsTitle = document.getElementById('details-title');
-const articlesList = document.getElementById('articles-list');
-const forceUpdateBtn = document.getElementById('force-update-btn');
-const saveSettingsBtn = document.getElementById('save-settings-btn');
-const refreshIntervalInput = document.getElementById('refresh-interval');
+// =============================================================================
 
+const elements = {
+    tabs: document.querySelectorAll('.tab-btn'),
+    tabContents: document.querySelectorAll('.tab-content'),
+    calendarsList: document.getElementById('calendars-list'),
+    favoritesList: document.getElementById('favorites-list'),
+    addCalendarBtn: document.getElementById('add-calendar-btn'),
+    calendarUrlInput: document.getElementById('calendar-url'),
+    calendarDetails: document.getElementById('calendar-details'),
+    backBtn: document.getElementById('back-btn'),
+    detailsTitle: document.getElementById('details-title'),
+    articlesList: document.getElementById('articles-list'),
+    forceUpdateBtn: document.getElementById('force-update-btn'),
+    saveSettingsBtn: document.getElementById('save-settings-btn'),
+    refreshIntervalInput: document.getElementById('refresh-interval')
+};
+
+// =============================================================================
 // State
+// =============================================================================
+
 let currentCalendars = [];
 let currentFavorites = [];
 
-// Initialize
+// =============================================================================
+// Initialization
+// =============================================================================
+
 document.addEventListener('DOMContentLoaded', async () => {
     await loadData();
     setupEventListeners();
-    // Clear new article counts when popup is opened
-    await chrome.runtime.sendMessage({ type: 'CLEAR_NEW_COUNTS' });
+    await chrome.runtime.sendMessage({ type: MESSAGES.CLEAR_NEW_COUNTS });
 });
 
+// =============================================================================
+// Data Management
+// =============================================================================
+
+/**
+ * Load calendars, favorites, and settings from storage
+ */
 async function loadData() {
     currentCalendars = await storage.getCalendars();
     currentFavorites = await storage.getFavorites();
     const settings = await storage.getSettings();
     
-    refreshIntervalInput.value = settings.refreshInterval;
+    elements.refreshIntervalInput.value = settings.refreshInterval;
     
     renderCalendars();
     renderFavorites();
 }
 
+// =============================================================================
+// Event Handlers
+// =============================================================================
+
 function setupEventListeners() {
-    // Tabs
-    tabs.forEach(tab => {
+    setupTabNavigation();
+    setupAddCalendar();
+    setupBackButton();
+    setupForceUpdate();
+    setupSaveSettings();
+}
+
+/**
+ * Setup tab navigation
+ */
+function setupTabNavigation() {
+    elements.tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
+            elements.tabs.forEach(t => t.classList.remove('active'));
+            elements.tabContents.forEach(c => c.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById(tab.dataset.tab).classList.add('active');
         });
     });
+}
 
-    // Add Calendar
-    addCalendarBtn.addEventListener('click', async () => {
-        const url = calendarUrlInput.value.trim();
+/**
+ * Setup add calendar button
+ */
+function setupAddCalendar() {
+    elements.addCalendarBtn.addEventListener('click', async () => {
+        const url = elements.calendarUrlInput.value.trim();
         if (!url) return;
         
-        addCalendarBtn.disabled = true;
-        addCalendarBtn.textContent = 'Adding...';
+        setButtonLoading(elements.addCalendarBtn, true, UI_TEXT.ADDING);
         
         try {
-            await chrome.runtime.sendMessage({ type: 'ADD_CALENDAR', url });
-            calendarUrlInput.value = '';
+            await chrome.runtime.sendMessage({ type: MESSAGES.ADD_CALENDAR, url });
+            elements.calendarUrlInput.value = '';
             await loadData();
         } catch (e) {
-            alert('Failed to add calendar. Check URL.');
+            alert(UI_TEXT.ADD_ERROR);
             console.error(e);
         } finally {
-            addCalendarBtn.disabled = false;
-            addCalendarBtn.textContent = 'Add';
+            setButtonLoading(elements.addCalendarBtn, false, UI_TEXT.ADD_BUTTON);
         }
-    });
-
-    // Back from details
-    backBtn.addEventListener('click', () => {
-        calendarDetails.classList.add('hidden');
-    });
-
-    // Force Update
-    forceUpdateBtn.addEventListener('click', async () => {
-        forceUpdateBtn.textContent = 'Updating...';
-        await chrome.runtime.sendMessage({ type: 'FORCE_UPDATE' });
-        await loadData();
-        forceUpdateBtn.textContent = 'Force Update All';
-    });
-
-    // Save Settings
-    saveSettingsBtn.addEventListener('click', async () => {
-        const settings = { refreshInterval: parseInt(refreshIntervalInput.value) || 60 };
-        await chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
-        alert('Settings Saved');
     });
 }
 
-function renderCalendars() {
-    calendarsList.innerHTML = '';
-    currentCalendars.forEach(cal => {
-        const el = document.createElement('div');
-        el.className = 'calendar-card';
-        el.innerHTML = `
-            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0;">
-                    ${cal.title}
-                    ${cal.newCount > 0 ? `<span class="new-badge">${cal.newCount}</span>` : ''}
-                </h3>
-                <button class="delete-cal-btn" style="background:none; border:none; color:#dc3545; cursor:pointer;" title="Remove Calendar">
-                    <i class="fas fa-trash"></i>
+/**
+ * Setup back button in details view
+ */
+function setupBackButton() {
+    elements.backBtn.addEventListener('click', () => {
+        elements.calendarDetails.classList.add('hidden');
+    });
+}
+
+/**
+ * Setup force update button
+ */
+function setupForceUpdate() {
+    elements.forceUpdateBtn.addEventListener('click', async () => {
+        elements.forceUpdateBtn.textContent = UI_TEXT.UPDATING;
+        await chrome.runtime.sendMessage({ type: MESSAGES.FORCE_UPDATE });
+        await loadData();
+        elements.forceUpdateBtn.textContent = UI_TEXT.FORCE_UPDATE;
+    });
+}
+
+/**
+ * Setup save settings button
+ */
+function setupSaveSettings() {
+    elements.saveSettingsBtn.addEventListener('click', async () => {
+        const settings = { 
+            refreshInterval: parseInt(elements.refreshIntervalInput.value) || 60 
+        };
+        await chrome.runtime.sendMessage({ type: MESSAGES.UPDATE_SETTINGS, settings });
+        alert(UI_TEXT.SETTINGS_SAVED);
+    });
+}
+
+// =============================================================================
+// UI Helpers
+// =============================================================================
+
+/**
+ * Set button loading state
+ * @param {HTMLButtonElement} button 
+ * @param {boolean} isLoading 
+ * @param {string} text 
+ */
+function setButtonLoading(button, isLoading, text) {
+    button.disabled = isLoading;
+    button.textContent = text;
+}
+
+/**
+ * Create HTML element from template string
+ * @param {string} html 
+ * @returns {HTMLElement}
+ */
+function createElementFromHTML(html) {
+    const template = document.createElement('template');
+    template.innerHTML = html.trim();
+    return template.content.firstChild;
+}
+
+// =============================================================================
+// Template Functions
+// =============================================================================
+
+/**
+ * Create calendar card HTML
+ * @param {Object} calendar 
+ * @returns {string}
+ */
+function createCalendarCardHTML(calendar) {
+    const newBadge = calendar.newCount > 0 
+        ? `<span class="new-badge">${calendar.newCount}</span>` 
+        : '';
+    
+    // Mitigate XSS by escaping title
+    const safeTitle = sanitize.escapeHTML(calendar.title);
+    
+    return `
+        <div class="calendar-card">
+            <div class="card-header">
+                <h3>${safeTitle}${newBadge}</h3>
+                <button class="delete-btn" title="Remove Calendar">
+                    ${icons.TRASH}
                 </button>
             </div>
             <div class="meta">
-                <span class="badge ${cal.platform}">${cal.platform}</span>
-                <span>Last updated: ${new Date(cal.lastUpdated).toLocaleTimeString()}</span>
+                <span class="badge ${calendar.platform}">${calendar.platform}</span>
+                <span>Last updated: ${new Date(calendar.lastUpdated).toLocaleTimeString()}</span>
             </div>
-        `;
+        </div>
+    `;
+}
+
+/**
+ * Create favorite card HTML
+ * @param {Object} favorite 
+ * @returns {string}
+ */
+function createFavoriteCardHTML(favorite) {
+    const safeTitle = sanitize.escapeHTML(favorite.title);
+    const safeAuthor = sanitize.escapeHTML(favorite.author);
+    
+    return `
+        <div class="article-card">
+            <h4><a href="${favorite.url}" target="_blank">${safeTitle}</a></h4>
+            <div class="meta">
+                <span>${favorite.date} - ${safeAuthor}</span>
+                <span class="remove-fav">&times;</span>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create article row HTML
+ * @param {Object} article 
+ * @param {boolean} isFavorite 
+ * @returns {string}
+ */
+function createArticleRowHTML(article, isFavorite) {
+    const authorIcon = article.icon 
+        ? `<img src="${article.icon}" class="author-icon">` 
+        : '';
+    
+    // Escape risky fields (Parser strips tags but extra safety is good)
+    const safeTitle = sanitize.escapeHTML(article.title || article.url);
+    const safeAuthor = sanitize.escapeHTML(article.author);
+    const safeDate = sanitize.escapeHTML(article.date);
+    
+    return `
+        <div class="article-row">
+            <div class="article-info">
+                <div class="article-date">${safeDate}</div>
+                <div class="article-link">
+                    <a href="${article.url}" target="_blank">${safeTitle}</a>
+                </div>
+                <div class="article-author">
+                    ${authorIcon}
+                    <span>${safeAuthor}</span>
+                </div>
+            </div>
+            <button class="fav-btn ${isFavorite ? 'active' : ''}">
+                ${isFavorite ? icons.STAR_FILLED : icons.STAR_OUTLINE}
+            </button>
+        </div>
+    `;
+}
+
+// =============================================================================
+// Render Functions
+// =============================================================================
+
+/**
+ * Render calendar list
+ */
+function renderCalendars() {
+    elements.calendarsList.innerHTML = '';
+    
+    currentCalendars.forEach(calendar => {
+        const el = createElementFromHTML(createCalendarCardHTML(calendar));
         
-        el.addEventListener('click', () => showDetails(cal));
+        // Click to show details
+        el.addEventListener('click', () => showDetails(calendar));
         
-        // Delete handler
-        const deleteBtn = el.querySelector('.delete-cal-btn');
+        // Delete button handler
+        const deleteBtn = el.querySelector('.delete-btn');
         deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (confirm(`Remove calendar "${cal.title}"?`)) {
-                await storage.removeCalendar(cal.id);
+            // sanitize not needed for confirm() but good practice if used in HTML
+            // confirm() shows plain text
+            if (confirm(UI_TEXT.CONFIRM_REMOVE(calendar.title))) {
+                await storage.removeCalendar(calendar.id);
                 await loadData();
             }
         });
         
-        calendarsList.appendChild(el);
+        elements.calendarsList.appendChild(el);
     });
 }
 
+/**
+ * Render favorites list
+ */
 function renderFavorites() {
-    favoritesList.innerHTML = '';
+    elements.favoritesList.innerHTML = '';
     
     if (currentFavorites.length === 0) {
-        favoritesList.innerHTML = '<p style="text-align:center; color:#777;">No favorites yet.</p>';
+        elements.favoritesList.innerHTML = `<p class="empty-message">${UI_TEXT.NO_FAVORITES}</p>`;
         return;
     }
 
-    currentFavorites.forEach(fav => {
-        const el = document.createElement('div');
-        el.className = 'article-card';
-        el.innerHTML = `
-            <h4><a href="${fav.url}" target="_blank">${fav.title}</a></h4>
-            <div class="meta">
-                <span>${fav.date} - ${fav.author}</span>
-                <span class="remove-fav" style="cursor:pointer; color:red;">&times;</span>
-            </div>
-        `;
+    currentFavorites.forEach(favorite => {
+        const el = createElementFromHTML(createFavoriteCardHTML(favorite));
+        
         el.querySelector('.remove-fav').addEventListener('click', async (e) => {
             e.stopPropagation();
-            await storage.removeFavorite(fav.url);
+            await storage.removeFavorite(favorite.url);
             await loadData();
         });
-        favoritesList.appendChild(el);
+        
+        elements.favoritesList.appendChild(el);
     });
 }
 
+/**
+ * Show calendar details with articles
+ * @param {Object} calendar 
+ */
 function showDetails(calendar) {
-    detailsTitle.innerHTML = `<a href="${calendar.url}" target="_blank" style="text-decoration:none; color:inherit;">${calendar.title} <i class="fas fa-external-link-alt" style="font-size:12px; color:#00c4cc;"></i></a>`;
-    articlesList.innerHTML = '';
+    const safeTitle = sanitize.escapeHTML(calendar.title);
+    
+    elements.detailsTitle.innerHTML = `
+        <a href="${calendar.url}" target="_blank" class="details-title-link">
+            ${safeTitle} 
+            <span class="external-link-icon">${icons.EXTERNAL_LINK}</span>
+        </a>
+    `;
+    
+    elements.articlesList.innerHTML = '';
     
     calendar.articles.forEach(article => {
-        const isFav = currentFavorites.some(f => f.url === article.url);
-        const row = document.createElement('div');
-        row.className = 'article-row';
-        row.innerHTML = `
-            <div class="article-info">
-                <div style="font-weight:bold; font-size:12px; color:#555; display:flex; align-items:center;">
-                    <span>${article.date}</span>
-                </div>
-                <div style="margin:2px 0;"><a href="${article.url}" target="_blank" style="text-decoration:none; color:#0366d6;">${article.title || article.url}</a></div>
-                <div style="font-size:11px; color:#888; display:flex; align-items:center;">
-                    ${article.icon ? `<img src="${article.icon}" style="width:16px; height:16px; border-radius:50%; margin-right:4px;">` : ''}
-                    <span>${article.author}</span>
-                </div>
-            </div>
-            <button class="fav-btn ${isFav ? 'active' : ''}">
-                <i class="fas fa-star"></i>
-            </button>
-        `;
+        const isFavorite = currentFavorites.some(f => f.url === article.url);
+        const row = createElementFromHTML(createArticleRowHTML(article, isFavorite));
         
         row.querySelector('.fav-btn').addEventListener('click', async function() {
-            const btn = this;
-            if (btn.classList.contains('active')) {
+            // Toggle logic
+            const willBeActive = !this.classList.contains('active');
+            
+            if (!willBeActive) {
                 await storage.removeFavorite(article.url);
-                btn.classList.remove('active');
+                this.classList.remove('active');
+                this.innerHTML = icons.STAR_OUTLINE;
             } else {
                 await storage.addFavorite({
                     ...article,
                     calendarTitle: calendar.title
                 });
-                btn.classList.add('active');
+                this.classList.add('active');
+                this.innerHTML = icons.STAR_FILLED;
             }
-            // Refresh local state without full reload to prevent UI jump
+            
+            // Refresh local state without full reload
             currentFavorites = await storage.getFavorites();
-            renderFavorites(); // Update bg tab if visible or just state
+            renderFavorites();
         });
         
-        articlesList.appendChild(row);
+        elements.articlesList.appendChild(row);
     });
     
-    calendarDetails.classList.remove('hidden');
+    elements.calendarDetails.classList.remove('hidden');
 }
